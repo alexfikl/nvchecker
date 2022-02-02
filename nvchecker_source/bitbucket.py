@@ -5,25 +5,34 @@
 BITBUCKET_URL = 'https://bitbucket.org/api/2.0/repositories/%s/commits/%s'
 # doc: https://developer.atlassian.com/cloud/bitbucket/rest/api-group-refs/#api-repositories-workspace-repo-slug-refs-tags-get
 BITBUCKET_MAX_TAG = 'https://bitbucket.org/api/2.0/repositories/%s/refs/tags?sort=-target.date'
+# doc: https://developer.atlassian.com/cloud/bitbucket/rest/api-group-downloads/#api-repositories-workspace-repo-slug-downloads-get
+BITBUCKET_LATEST_RELEASE = 'https://bitbucket.org/api/2.0/repositories/%s/downloads'
+
+DEFAULT_MAX_PAGE = 3
 
 async def get_version(name, conf, *, cache, **kwargs):
   repo = conf['bitbucket']
   br = conf.get('branch', '')
   use_max_tag = conf.get('use_max_tag', False)
+  use_latest_release = conf.get('use_latest_release', False)
 
   if use_max_tag:
     url = BITBUCKET_MAX_TAG % repo
-    max_page = conf.get('max_page', 3)
+    max_page = conf.get('max_page', DEFAULT_MAX_PAGE)
     data = await _get_tags(url, max_page=max_page, cache=cache)
-
+  elif use_latest_release:
+    url = BITBUCKET_LATEST_RELEASE % repo
+    max_page = conf.get('max_page', DEFAULT_MAX_PAGE)
+    data = await _get_tags(url, max_page=max_page, cache=cache)
   else:
     url = BITBUCKET_URL % (repo, br)
     data = await cache.get_json(url)
 
-  if use_max_tag:
+  if use_max_tag or use_latest_release:
     version = data
   else:
     version = data['values'][0]['date'].split('T', 1)[0].replace('-', '')
+
   return version
 
 async def _get_tags(url, *, max_page, cache):
@@ -38,4 +47,3 @@ async def _get_tags(url, *, max_page, cache):
       break
 
   return ret
-
